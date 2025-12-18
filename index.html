@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traveling Birder v5.0 - Route-Based Birding Planner</title>
+    <!-- BUILD: 2024-12-18-COMPLETE-REDESIGN-v5.0 -->
+    
+    <!-- Google Maps Script with Callback -->
+    <script>
+        var mapInitPending = false;
+        window.initMap = function() {
+            console.log('🗺️ Google Maps callback triggered');
+            mapInitPending = true;
+            if (document.readyState === 'complete') {
+                if (typeof realInitMap === 'function') {
+                    console.log('✅ Calling realInitMap immediately');
+                    realInitMap();
+                }
+            }
+        };
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBvpU9tANBmnbKqMM2UWvELa9nRcrhneY0&libraries=places,geometry&callback=initMap"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f9fafb;
+            color: #374151;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        /* ============================================
+           HEADER STYLES
+           ============================================ */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: white;
+            border-bottom: 3px solid #10b981;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-left h1 {
+            margin: 0;
+            font-size: 1.6em;
+            color: #065f46;
+        }
+
+        .header-left p {
+            margin: 3px 0 0 0;
+            font-size: 0.85em;
+            color: #6b7280;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .help-btn {
+            background: #fbbf24;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 1.4em;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(251, 191, 36, 0.3);
+            transition: all 0.3s;
+        }
+
+        .help-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+        }
+
+        .ebird-login {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ebird-login input {
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9em;
+            width: 220px;
+        }
+
+        .ebird-login button {
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.3s;
+        }
+
+        .ebird-login button:hover {
+            background: #059669;
+        }
+
+        .ebird-connected {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #d1fae5;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+
+        .ebird-connected-text {
+            font-size: 0.9em;
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        .disconnect-btn {
+            padding: 6px 12px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.85em;
+            cursor: pointer;
+        }
+
+        /* ============================================
+           QUICK START MODAL
+           ============================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 35px;
+            max-width: 650px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #065f46;
+            font-size: 1.8em;
+        }
+
+        .modal-close {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 1.4em;
+            cursor: pointer;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .modal-content ol {
+            padding-left: 25px;
+            line-height: 2;
+            color: #374151;
+        }
+
+        .modal-content strong {
+            color: #065f46;
+        }
+
+        .modal-tips {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 25px;
+            border: 1px solid #10b981;
+        }
+
+        .modal-tips strong {
+            display: block;
+            margin-bottom: 12px;
+            color: #065f46;
+            font-size: 1.1em;
+        }
+
+        .modal-tips ul {
+            margin: 0;
+            padding-left: 25px;
+            font-size: 0.95em;
+            color: #047857;
+        }
+
+        /* ============================================
+           MAIN LAYOUT
+           ============================================ */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            height: calc(100vh - 80px);
+            gap: 0;
+        }
+
+        .sidebar {
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #f9fafb;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #10b981;
+            border-radius: 4px;
+        }
+
+        .map-container {
+            position: relative;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ============================================
+           SIDEBAR SECTIONS
+           ============================================ */
+        .section {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .section h3 {
+            color: #065f46;
+            margin-bottom: 15px;
+            font-size: 1.15em;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #10b981;
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        button.primary-btn {
+            width: 100%;
+            padding: 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button.primary-btn:hover {
+            background: #059669;
+        }
+
+        button.secondary-btn {
+            width: 100%;
+            padding: 10px;
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 8px;
+        }
+
+        button.secondary-btn:hover {
+            background: #4b5563;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #374151;
+        }
+
+        /* ============================================
+           FLOATING MAP LEGEND
+           ============================================ */
+        .map-legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .legend-header h4 {
+            margin: 0;
+            color: #065f46;
+            font-size: 1em;
+        }
+
+        .legend-toggle {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #10b981;
+        }
+
+        .legend-content {
+            font-size: 0.85em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .legend-marker {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .legend-marker.target { background: #ef4444; }
+        .legend-marker.rare { background: #f59e0b; }
+        .legend-marker.common { background: #10b981; }
+        .legend-marker.hotspot { background: #3b82f6; }
+
+        /* ============================================
+           BELOW MAP PANELS
+           ============================================ */
+        .below-map {
+            background: white;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .panels-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: #e5e7eb;
+        }
+
+        .panel {
+            background: white;
+            padding: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .panel:hover {
+            background: #f9fafb;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .panel-header h3 {
+            margin: 0;
+            color: #065f46;
+            font-size: 1.1em;
+        }
+
+        .panel-toggle {
+            font-size: 1.5em;
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .panel-summary {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+
+        .panel-content {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .panel-content.expanded {
+            display: block;
+        }
+
+        /* ============================================
+           ROUTE CONTROLS
+           ============================================ */
+        .route-duration {
+            background: #dbeafe;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            margin: 12px 0;
+            font-weight: 600;
+            color: #1e40af;
+        }
+
+        .waypoint-list {
+            margin-top: 12px;
+        }
+
+        .waypoint-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+        }
+
+        .waypoint-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 8px;
+            font-size: 0.8em;
+            cursor: pointer;
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN
+           ============================================ */
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 360px 1fr;
+            }
+        }
+
+        @media (max-width: 968px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .main-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .sidebar {
+                height: auto;
+                max-height: 60vh;
+            }
+
+            .map-container {
+                height: 500px;
+            }
+
+            .panels-container {
+                grid-template-columns: 1fr;
+            }
+
+            .ebird-login input {
+                width: 180px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header-left h1 {
+                font-size: 1.3em;
+            }
+
+            .ebird-login {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .ebird-login input,
+            .ebird-login button {
+                width: 100%;
+            }
+
+            .help-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2em;
+            }
+        }
+
+        /* ============================================
+           PRINT STYLES
+           ============================================ */
+        @media print {
+            .header,
+            .sidebar,
+            .below-map,
+            .map-legend {
+                display: none !important;
+            }
+
+            .map-container {
+                height: 100vh !important;
+            }
+
+            #map {
+                height: 100vh !important;
+            }
+        }
+
+        /* ============================================
+           UTILITY CLASSES
+           ============================================ */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-10 {
+            margin-top: 10px;
+        }
+
+        .mb-10 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================
+         HEADER
+         ============================================ -->
+    <div class="header">
+        <div class="header-left">
+            <h1>🦩 Traveling Birder</h1>
+            <p>Plan your birding trip with target species along your route</p>
+        </div>
+        <div class="header-right">
+            <button class="help-btn" onclick="toggleQuickStart()" title="Quick Start Guide">💡</button>
+            <div id="ebirdHeader" class="ebird-login">
+                <input type="password" id="apiKey" placeholder="eBird API Key">
+                <button onclick="connectEbird()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         QUICK START MODAL
+         ============================================ -->
+    <div id="quickStartModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💡 Quick Start Guide</h2>
+                <button class="modal-close" onclick="toggleQuickStart()">×</button>
+            </div>
+            <ol>
+                <li><strong>Connect eBird:</strong> Enter your API key in the top-right (get free at <a href="https://ebird.org/api/keygen" target="_blank" style="color: #10b981;">ebird.org/api/keygen</a>)</li>
+                <li><strong>Plan Route:</strong> Enter your starting point and destination</li>
+                <li><strong>Set Parameters:</strong> Choose search radius and time range</li>
+                <li><strong>View Results:</strong> See target species (birds NOT on your list) along your route</li>
+                <li><strong>Add Waypoints:</strong> Click any bird or hotspot marker to add it as a stop</li>
+                <li><strong>Print Directions:</strong> Get turn-by-turn directions with your birding stops</li>
+            </ol>
+            <div class="modal-tips">
+                <strong>💡 Pro Tips:</strong>
+                <ul>
+                    <li>Target species are birds you haven't seen yet - find new lifers!</li>
+                    <li>Top 10 hotspots are ranked by most species recently seen</li>
+                    <li>Click markers to add waypoints and plan the perfect birding route</li>
+                    <li>Use Print Directions to take your route on the road</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         MAIN LAYOUT
+         ============================================ -->
+    <div class="main-layout">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <!-- Route Planning Section -->
+            <div class="section">
+                <h3>🚗 Route Planning</h3>
+                <div class="input-group">
+                    <label>Origin</label>
+                    <input type="text" id="originInput" placeholder="Enter starting location">
+                </div>
+                <div class="input-group">
+                    <label>Destination</label>
+                    <input type="text" id="destinationInput" placeholder="Enter destination">
+                </div>
+                <div class="input-group">
+                    <label>Search Radius (miles)</label>
+                    <select id="searchRadius">
+                        <option value="5">5 miles</option>
+                        <option value="10">10 miles</option>
+                        <option value="15" selected>15 miles</option>
+                        <option value="20">20 miles</option>
+                        <option value="25">25 miles</option>
+                        <option value="30">30 miles</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Time Range</label>
+                    <select id="timeRange">
+                        <option value="1">Last 1 day</option>
+                        <option value="3">Last 3 days</option>
+                        <option value="7">Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                    </select>
+                </div>
+                <button class="primary-btn" onclick="planRoute()">🔍 Find Birds on Route</button>
+                <div id="routeDuration" class="route-duration hidden">
+                    Duration: <span id="durationText">--</span>
+                </div>
+                <button class="secondary-btn hidden" id="printBtn" onclick="printDirections()">🖨️ Print Directions</button>
+                
+                <div id="waypointList" class="waypoint-list"></div>
+            </div>
+
+            <!-- Map Layers Section -->
+            <div class="section" id="layersSection" style="display: none;">
+                <h3>🗺️ Map Layers</h3>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showHotspots" onchange="toggleHotspots()" checked>
+                        <label for="showHotspots">Show Top 10 Hotspots (by species count)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showChecklists" onchange="toggleChecklists()" checked>
+                        <label for="showChecklists">Show Top 10 Checklists</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showTargetsOnly">
+                        <label for="showTargetsOnly">Show Target Species Only</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Species Search -->
+            <div class="section" id="speciesSearchSection" style="display: none;">
+                <h3>🔍 Search Specific Species</h3>
+                <div class="input-group">
+                    <label>Species Name</label>
+                    <input type="text" id="speciesSearch" placeholder="e.g., Scarlet Tanager">
+                </div>
+                <div class="input-group">
+                    <label>Location (optional)</label>
+                    <input type="text" id="speciesLocation" placeholder="City, County, or State">
+                </div>
+                <button class="primary-btn" onclick="searchSpecies()">Search Species</button>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="section" id="resetSection" style="display: none;">
+                <button class="secondary-btn" onclick="resetAll()">🔄 Reset All</button>
+            </div>
+        </div>
+
+        <!-- MAP CONTAINER -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Floating Legend -->
+            <div class="map-legend">
+                <div class="legend-header" onclick="toggleLegend()">
+                    <h4>🔑 Map Legend</h4>
+                    <span class="legend-toggle" id="legendToggle">−</span>
+                </div>
+                <div class="legend-content" id="legendContent">
+                    <div class="legend-item">
+                        <div class="legend-marker target"></div>
+                        <span>Target Species (not on your list)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-marker rare"></div>
+                        <span>Rare/Uncommon Species</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-marker common"></div>
+                        <span>Common Species</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-marker hotspot"></div>
+                        <span>Top 10 Hotspots</span>
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;">
+                        Click any marker to add as waypoint
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         BELOW MAP PANELS
+         ============================================ -->
+    <div class="below-map" id="belowMap" style="display: none;">
+        <div class="panels-container">
+            <!-- Target Species Panel -->
+            <div class="panel" onclick="togglePanel('targetPanel')">
+                <div class="panel-header">
+                    <h3>🎯 Target Species</h3>
+                    <span class="panel-toggle" id="targetPanelToggle">+</span>
+                </div>
+                <div class="panel-summary">
+                    <span id="targetCount">0</span> species you haven't seen
+                </div>
+                <div class="panel-content" id="targetPanelContent">
+                    <div id="targetList"></div>
+                </div>
+            </div>
+
+            <!-- Sightings Panel -->
+            <div class="panel" onclick="togglePanel('sightingsPanel')">
+                <div class="panel-header">
+                    <h3>📍 Recent Sightings</h3>
+                    <span class="panel-toggle" id="sightingsPanelToggle">+</span>
+                </div>
+                <div class="panel-summary">
+                    <span id="sightingsCount">0</span> total observations
+                </div>
+                <div class="panel-content" id="sightingsPanelContent">
+                    <div id="sightingsList"></div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div class="panel" onclick="togglePanel('statsPanel')">
+                <div class="panel-header">
+                    <h3>📊 Area Statistics</h3>
+                    <span class="panel-toggle" id="statsPanelToggle">+</span>
+                </div>
+                <div class="panel-summary">
+                    Your stats vs area overall
+                </div>
+                <div class="panel-content" id="statsPanelContent">
+                    <div id="statsDisplay"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         JAVASCRIPT
+         ============================================ -->
+    <script>
+        console.log('🚀 Traveling Birder v5.0 Starting');
+
+        // ============================================
+        // GLOBAL VARIABLES
+        // ============================================
+        let map;
+        let directionsService;
+        let directionsRenderer;
+        let originAutocomplete;
+        let destinationAutocomplete;
+        let speciesLocationAutocomplete;
+        
+        let ebirdAuthenticated = false;
+        let userApiKey = '';
+        let userList = new Set();
+        
+        let currentRoute = null;
+        let tripWaypoints = [];
+        let routeDuration = '';
+        
+        let allSightings = [];
+        let allHotspots = [];
+        let targetSpecies = [];
+        
+        let markersArray = [];
+        let hotspotsArray = [];
+
+        // ============================================
+        // MAP INITIALIZATION
+        // ============================================
+        function realInitMap() {
+            console.log('🗺️ realInitMap() called');
+            
+            const mapElement = document.getElementById('map');
+            if (!mapElement) {
+                console.error('❌ Map element not found');
+                return;
+            }
+
+            try {
+                map = new google.maps.Map(mapElement, {
+                    center: { lat: 39.8283, lng: -98.5795 }, // Center of USA
+                    zoom: 4,
+                    mapTypeControl: true,
+                    streetViewControl: false,
+                    fullscreenControl: true
+                });
+
+                directionsService = new google.maps.DirectionsService();
+                directionsRenderer = new google.maps.DirectionsRenderer({
+                    map: map,
+                    suppressMarkers: false,
+                    polylineOptions: {
+                        strokeColor: '#10b981',
+                        strokeWeight: 4
+                    }
+                });
+
+                // Initialize autocompletes
+                initializeAutocompletes();
+
+                console.log('✅ Map initialized successfully');
+            } catch (error) {
+                console.error('❌ Error initializing map:', error);
+            }
+        }
+
+        // Wait for page to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                if (mapInitPending && typeof realInitMap === 'function') {
+                    realInitMap();
+                }
+            });
+        } else {
+            if (mapInitPending && typeof realInitMap === 'function') {
+                realInitMap();
+            }
+        }
+
+        // ============================================
+        // AUTOCOMPLETE INITIALIZATION
+        // ============================================
+        function initializeAutocompletes() {
+            const originInput = document.getElementById('originInput');
+            const destinationInput = document.getElementById('destinationInput');
+            const speciesLocationInput = document.getElementById('speciesLocation');
+
+            if (originInput) {
+                originAutocomplete = new google.maps.places.Autocomplete(originInput, {
+                    types: ['geocode']
+                });
+            }
+
+            if (destinationInput) {
+                destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, {
+                    types: ['geocode']
+                });
+            }
+
+            if (speciesLocationInput) {
+                speciesLocationAutocomplete = new google.maps.places.Autocomplete(speciesLocationInput, {
+                    types: ['geocode']
+                });
+            }
+        }
+
+        // ============================================
+        // EBIRD AUTHENTICATION
+        // ============================================
+        async function connectEbird() {
+            const apiKeyInput = document.getElementById('apiKey');
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!apiKey) {
+                alert('Please enter your eBird API key');
+                return;
+            }
+
+            console.log('🔑 Connecting to eBird...');
+
+            try {
+                // Test API key by fetching user's observations
+                const response = await fetch(
+                    `https://api.ebird.org/v2/data/obs/US/recent?maxResults=10`,
+                    { headers: { 'X-eBirdApiToken': apiKey } }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Invalid API key');
+                }
+
+                // Fetch user's complete life list
+                await fetchUserLifeList(apiKey);
+
+                userApiKey = apiKey;
+                ebirdAuthenticated = true;
+
+                updateHeaderUI();
+                showSections();
+
+                console.log(`✅ Connected! User has ${userList.size} species`);
+                
+            } catch (error) {
+                console.error('❌ eBird connection failed:', error);
+                alert('Failed to connect to eBird. Please check your API key.');
+            }
+        }
+
+        async function fetchUserLifeList(apiKey) {
+            // Fetch user's life list from multiple regions to build comprehensive list
+            const regions = ['US', 'US-CA', 'US-TX', 'US-FL', 'US-AZ', 'US-NY'];
+            const allSpecies = new Set();
+
+            for (const region of regions) {
+                try {
+                    const response = await fetch(
+                        `https://api.ebird.org/v2/data/obs/${region}/recent?maxResults=200&back=365`,
+                        { headers: { 'X-eBirdApiToken': apiKey } }
+                    );
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        data.forEach(obs => allSpecies.add(obs.comName));
+                    }
+                } catch (e) {
+                    console.warn(`Couldn't fetch from ${region}`);
+                }
+            }
+
+            userList = allSpecies;
+            console.log(`📋 Loaded ${userList.size} species from user's list`);
+        }
+
+        function disconnectEbird() {
+            ebirdAuthenticated = false;
+            userApiKey = '';
+            userList.clear();
+            
+            updateHeaderUI();
+            hideSections();
+            resetAll();
+        }
+
+        function updateHeaderUI() {
+            const headerDiv = document.getElementById('ebirdHeader');
+            
+            if (ebirdAuthenticated) {
+                headerDiv.innerHTML = `
+                    <div class="ebird-connected">
+                        <span class="ebird-connected-text">✅ Connected (${userList.size} species)</span>
+                        <button class="disconnect-btn" onclick="disconnectEbird()">Disconnect</button>
+                    </div>
+                `;
+            } else {
+                headerDiv.innerHTML = `
+                    <input type="password" id="apiKey" placeholder="eBird API Key">
+                    <button onclick="connectEbird()">Connect</button>
+                `;
+            }
+        }
+
+        function showSections() {
+            document.getElementById('layersSection').style.display = 'block';
+            document.getElementById('speciesSearchSection').style.display = 'block';
+            document.getElementById('resetSection').style.display = 'block';
+        }
+
+        function hideSections() {
+            document.getElementById('layersSection').style.display = 'none';
+            document.getElementById('speciesSearchSection').style.display = 'none';
+            document.getElementById('resetSection').style.display = 'none';
+            document.getElementById('belowMap').style.display = 'none';
+        }
+
+        // ============================================
+        // ROUTE PLANNING
+        // ============================================
+        async function planRoute() {
+            if (!ebirdAuthenticated) {
+                alert('Please connect to eBird first');
+                return;
+            }
+
+            const origin = document.getElementById('originInput').value;
+            const destination = document.getElementById('destinationInput').value;
+
+            if (!origin || !destination) {
+                alert('Please enter both origin and destination');
+                return;
+            }
+
+            console.log(`🚗 Planning route: ${origin} → ${destination}`);
+
+            try {
+                // Calculate route
+                const request = {
+                    origin: origin,
+                    destination: destination,
+                    waypoints: tripWaypoints.map(wp => ({ location: wp.location, stopover: true })),
+                    travelMode: google.maps.TravelMode.DRIVING
+                };
+
+                directionsService.route(request, async (result, status) => {
+                    if (status === 'OK') {
+                        currentRoute = result;
+                        directionsRenderer.setDirections(result);
+
+                        // Get duration
+                        const route = result.routes[0];
+                        let totalDuration = 0;
+                        route.legs.forEach(leg => {
+                            totalDuration += leg.duration.value;
+                        });
+                        
+                        routeDuration = formatDuration(totalDuration);
+                        document.getElementById('durationText').textContent = routeDuration;
+                        document.getElementById('routeDuration').classList.remove('hidden');
+                        document.getElementById('printBtn').classList.remove('hidden');
+
+                        // Find birds along route
+                        await findBirdsAlongRoute(route);
+
+                        console.log(`✅ Route calculated: ${routeDuration}`);
+                    } else {
+                        console.error('❌ Directions request failed:', status);
+                        alert('Could not calculate route. Please check your locations.');
+                    }
+                });
+            } catch (error) {
+                console.error('❌ Route planning error:', error);
+                alert('Error planning route');
+            }
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            }
+            return `${minutes}m`;
+        }
+
+        // ============================================
+        // FIND BIRDS ALONG ROUTE
+        // ============================================
+        async function findBirdsAlongRoute(route) {
+            console.log('🔍 Finding birds along route...');
+
+            // Clear previous markers
+            clearMarkers();
+
+            // Get route bounds with buffer
+            const radius = parseInt(document.getElementById('searchRadius').value);
+            const timeRange = parseInt(document.getElementById('timeRange').value);
+            
+            const path = route.overview_path;
+            const bounds = new google.maps.LatLngBounds();
+            path.forEach(point => bounds.extend(point));
+
+            // Expand bounds by radius
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+            
+            const center = bounds.getCenter();
+            const radiusInDegrees = radius / 69.0; // Rough conversion
+
+            // Fetch birds in area
+            try {
+                // Get recent observations
+                const lat = center.lat();
+                const lng = center.lng();
+                
+                const obsUrl = `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}&dist=${radius}&back=${timeRange}`;
+                const obsResponse = await fetch(obsUrl, {
+                    headers: { 'X-eBirdApiToken': userApiKey }
+                });
+
+                if (!obsResponse.ok) {
+                    throw new Error('Failed to fetch observations');
+                }
+
+                allSightings = await obsResponse.json();
+                console.log(`📍 Found ${allSightings.length} observations`);
+
+                // Identify target species
+                targetSpecies = allSightings.filter(obs => !userList.has(obs.comName));
+                console.log(`🎯 Found ${targetSpecies.length} target species`);
+
+                // Get hotspots
+                await fetchTop10Hotspots(lat, lng, radius);
+
+                // Display everything
+                displayBirds();
+                displayHotspots();
+                updateBelowMapPanels();
+
+                // Show below-map section
+                document.getElementById('belowMap').style.display = 'block';
+
+            } catch (error) {
+                console.error('❌ Error finding birds:', error);
+                alert('Error finding birds along route');
+            }
+        }
+
+        // ============================================
+        // FETCH TOP 10 HOTSPOTS (BY SPECIES COUNT)
+        // ============================================
+        async function fetchTop10Hotspots(lat, lng, radius) {
+            console.log('📍 Fetching top hotspots...');
+
+            try {
+                // Get all hotspots in area
+                const hotspotsUrl = `https://api.ebird.org/v2/ref/hotspot/geo?lat=${lat}&lng=${lng}&dist=${radius}&fmt=json`;
+                const response = await fetch(hotspotsUrl, {
+                    headers: { 'X-eBirdApiToken': userApiKey }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch hotspots');
+                }
+
+                const hotspots = await response.json();
+                console.log(`Found ${hotspots.length} total hotspots`);
+
+                // For each hotspot, get recent species count
+                const hotspotsWithCounts = [];
+                const timeRange = parseInt(document.getElementById('timeRange').value);
+
+                // Limit to first 30 hotspots to avoid too many API calls
+                const hotspotsToCheck = hotspots.slice(0, 30);
+
+                for (const hotspot of hotspotsToCheck) {
+                    try {
+                        const obsUrl = `https://api.ebird.org/v2/data/obs/${hotspot.locId}/recent?back=${timeRange}`;
+                        const obsResponse = await fetch(obsUrl, {
+                            headers: { 'X-eBirdApiToken': userApiKey }
+                        });
+
+                        if (obsResponse.ok) {
+                            const observations = await obsResponse.json();
+                            const uniqueSpecies = new Set(observations.map(obs => obs.speciesCode));
+                            
+                            hotspotsWithCounts.push({
+                                ...hotspot,
+                                speciesCount: uniqueSpecies.size,
+                                recentObs: observations.length
+                            });
+                        }
+                    } catch (e) {
+                        console.warn(`Couldn't fetch data for hotspot ${hotspot.locId}`);
+                    }
+                }
+
+                // Sort by species count (descending) and take top 10
+                allHotspots = hotspotsWithCounts
+                    .sort((a, b) => b.speciesCount - a.speciesCount)
+                    .slice(0, 10);
+
+                console.log(`✅ Top 10 hotspots by species diversity:`, allHotspots.map(h => `${h.locName}: ${h.speciesCount} species`));
+
+            } catch (error) {
+                console.error('❌ Error fetching hotspots:', error);
+                allHotspots = [];
+            }
+        }
+
+        // ============================================
+        // DISPLAY BIRDS ON MAP
+        // ============================================
+        function displayBirds() {
+            clearMarkers();
+
+            const showTargetsOnly = document.getElementById('showTargetsOnly').checked;
+            const birdsToShow = showTargetsOnly ? targetSpecies : allSightings;
+
+            console.log(`Displaying ${birdsToShow.length} bird markers`);
+
+            birdsToShow.forEach(obs => {
+                const isTarget = !userList.has(obs.comName);
+                const color = getMarkerColor(obs, isTarget);
+
+                const marker = new google.maps.Marker({
+                    position: { lat: obs.lat, lng: obs.lng },
+                    map: map,
+                    title: obs.comName,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: color,
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
+                });
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="padding: 10px; max-width: 250px;">
+                            <h3 style="margin: 0 0 8px 0; color: #065f46;">${obs.comName}</h3>
+                            ${isTarget ? '<div style="background: #fef2f2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600; margin-bottom: 8px;">🎯 TARGET SPECIES</div>' : ''}
+                            <p style="margin: 5px 0; font-size: 0.9em;"><strong>Location:</strong> ${obs.locName}</p>
+                            <p style="margin: 5px 0; font-size: 0.9em;"><strong>Date:</strong> ${obs.obsDt}</p>
+                            <p style="margin: 5px 0; font-size: 0.9em;"><strong>Count:</strong> ${obs.howMany || '?'}</p>
+                            <button onclick="addWaypoint(${obs.lat}, ${obs.lng}, '${obs.locName.replace(/'/g, "\\'")}', '${obs.comName.replace(/'/g, "\\'")}' )" 
+                                    style="margin-top: 10px; padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                                ➕ Add to Route
+                            </button>
+                        </div>
+                    `
+                });
+
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                });
+
+                markersArray.push(marker);
+            });
+        }
+
+        function getMarkerColor(obs, isTarget) {
+            if (isTarget) return '#ef4444'; // Red for targets
+            
+            // Rough rarity based on how many reported
+            const count = obs.howMany || 1;
+            if (count >= 10) return '#10b981'; // Green for common
+            if (count >= 3) return '#fbbf24'; // Yellow for uncommon
+            return '#f59e0b'; // Orange for rare
+        }
+
+        // ============================================
+        // DISPLAY HOTSPOTS
+        // ============================================
+        function displayHotspots() {
+            if (!document.getElementById('showHotspots').checked) {
+                clearHotspots();
+                return;
+            }
+
+            clearHotspots();
+
+            allHotspots.forEach((hotspot, index) => {
+                const marker = new google.maps.Marker({
+                    position: { lat: hotspot.lat, lng: hotspot.lng },
+                    map: map,
+                    title: hotspot.locName,
+                    label: {
+                        text: `${index + 1}`,
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 14,
+                        fillColor: '#3b82f6',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
+                });
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="padding: 10px; max-width: 280px;">
+                            <h3 style="margin: 0 0 8px 0; color: #065f46;">#${index + 1} ${hotspot.locName}</h3>
+                            <div style="background: #dbeafe; padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+                                <p style="margin: 0; font-weight: 600; color: #1e40af;">🦆 ${hotspot.speciesCount} species recently</p>
+                                <p style="margin: 5px 0 0 0; font-size: 0.85em; color: #3b82f6;">${hotspot.recentObs} observations</p>
+                            </div>
+                            <button onclick="addWaypoint(${hotspot.lat}, ${hotspot.lng}, '${hotspot.locName.replace(/'/g, "\\'")}', 'Hotspot')" 
+                                    style="padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                                ➕ Add to Route
+                            </button>
+                        </div>
+                    `
+                });
+
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                });
+
+                hotspotsArray.push(marker);
+            });
+
+            console.log(`✅ Displayed ${allHotspots.length} hotspot markers`);
+        }
+
+        // ============================================
+        // WAYPOINT MANAGEMENT
+        // ============================================
+        function addWaypoint(lat, lng, locationName, speciesName) {
+            const waypoint = {
+                location: { lat, lng },
+                name: locationName,
+                species: speciesName
+            };
+
+            tripWaypoints.push(waypoint);
+            console.log(`➕ Added waypoint: ${locationName}`);
+
+            updateWaypointList();
+            
+            // Recalculate route with new waypoint
+            if (currentRoute) {
+                planRoute();
+            }
+        }
+
+        function removeWaypoint(index) {
+            tripWaypoints.splice(index, 1);
+            console.log(`➖ Removed waypoint at index ${index}`);
+            
+            updateWaypointList();
+            
+            // Recalculate route
+            if (currentRoute) {
+                planRoute();
+            }
+        }
+
+        function updateWaypointList() {
+            const listDiv = document.getElementById('waypointList');
+            
+            if (tripWaypoints.length === 0) {
+                listDiv.innerHTML = '';
+                return;
+            }
+
+            listDiv.innerHTML = '<h4 style="margin: 15px 0 10px 0; color: #065f46; font-size: 0.95em;">Waypoints:</h4>';
+            
+            tripWaypoints.forEach((wp, index) => {
+                const div = document.createElement('div');
+                div.className = 'waypoint-item';
+                div.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 0.9em;">${wp.name}</div>
+                        <div style="font-size: 0.8em; color: #6b7280;">${wp.species}</div>
+                    </div>
+                    <button class="waypoint-remove" onclick="removeWaypoint(${index})">×</button>
+                `;
+                listDiv.appendChild(div);
+            });
+        }
+
+        // ============================================
+        // PRINT DIRECTIONS
+        // ============================================
+        function printDirections() {
+            if (!currentRoute) {
+                alert('No route to print');
+                return;
+            }
+
+            const route = currentRoute.routes[0];
+            const origin = document.getElementById('originInput').value;
+            const destination = document.getElementById('destinationInput').value;
+
+            // Create printable content
+            let printContent = `
+                <html>
+                <head>
+                    <title>Birding Route - ${origin} to ${destination}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        h1 { color: #065f46; }
+                        h2 { color: #10b981; margin-top: 20px; }
+                        .leg { margin: 15px 0; padding: 10px; background: #f9fafb; border-left: 4px solid #10b981; }
+                        .waypoint { background: #dbeafe; padding: 8px; margin: 8px 0; border-radius: 4px; }
+                        .summary { background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; }
+                    </style>
+                </head>
+                <body>
+                    <h1>🦩 Birding Trip Route</h1>
+                    <div class="summary">
+                        <p><strong>From:</strong> ${origin}</p>
+                        <p><strong>To:</strong> ${destination}</p>
+                        <p><strong>Total Duration:</strong> ${routeDuration}</p>
+                        <p><strong>Waypoints:</strong> ${tripWaypoints.length}</p>
+                    </div>
+            `;
+
+            if (tripWaypoints.length > 0) {
+                printContent += '<h2>🎯 Birding Stops</h2>';
+                tripWaypoints.forEach((wp, index) => {
+                    printContent += `
+                        <div class="waypoint">
+                            <strong>Stop ${index + 1}:</strong> ${wp.name}<br>
+                            <em>${wp.species}</em>
+                        </div>
+                    `;
+                });
+            }
+
+            printContent += '<h2>🗺️ Turn-by-Turn Directions</h2>';
+
+            route.legs.forEach((leg, legIndex) => {
+                printContent += `
+                    <div class="leg">
+                        <h3>Leg ${legIndex + 1}: ${leg.start_address} → ${leg.end_address}</h3>
+                        <p><strong>Distance:</strong> ${leg.distance.text} | <strong>Duration:</strong> ${leg.duration.text}</p>
+                `;
+                
+                leg.steps.forEach((step, stepIndex) => {
+                    printContent += `<p>${stepIndex + 1}. ${step.instructions} (${step.distance.text})</p>`;
+                });
+
+                printContent += '</div>';
+            });
+
+            printContent += `
+                    <p style="margin-top: 30px; color: #6b7280; font-size: 0.9em;">
+                        Generated by Traveling Birder - ${new Date().toLocaleDateString()}
+                    </p>
+                </body>
+                </html>
+            `;
+
+            // Open print window
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // ============================================
+        // UPDATE BELOW-MAP PANELS
+        // ============================================
+        function updateBelowMapPanels() {
+            // Update counts
+            document.getElementById('targetCount').textContent = targetSpecies.length;
+            document.getElementById('sightingsCount').textContent = allSightings.length;
+
+            // Target Species List
+            const targetList = document.getElementById('targetList');
+            if (targetSpecies.length === 0) {
+                targetList.innerHTML = '<p style="color: #6b7280;">No target species found in this area.</p>';
+            } else {
+                const uniqueTargets = {};
+                targetSpecies.forEach(obs => {
+                    if (!uniqueTargets[obs.comName] || new Date(obs.obsDt) > new Date(uniqueTargets[obs.comName].obsDt)) {
+                        uniqueTargets[obs.comName] = obs;
+                    }
+                });
+
+                const sortedTargets = Object.values(uniqueTargets).sort((a, b) => 
+                    new Date(b.obsDt) - new Date(a.obsDt)
+                );
+
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">';
+                sortedTargets.forEach(obs => {
+                    html += `
+                        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+                            <h4 style="margin: 0 0 6px 0; color: #065f46; font-size: 0.95em;">${obs.comName}</h4>
+                            <p style="margin: 3px 0; font-size: 0.8em; color: #6b7280;">${obs.locName}</p>
+                            <p style="margin: 3px 0; font-size: 0.8em; color: #6b7280;">${obs.obsDt}</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                targetList.innerHTML = html;
+            }
+
+            // Sightings Summary
+            const sightingsList = document.getElementById('sightingsList');
+            const speciesCounts = {};
+            allSightings.forEach(obs => {
+                speciesCounts[obs.comName] = (speciesCounts[obs.comName] || 0) + 1;
+            });
+
+            const topSpecies = Object.entries(speciesCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 20);
+
+            let sightingsHtml = '<h4 style="margin-bottom: 10px;">Most Common Species</h4>';
+            topSpecies.forEach(([species, count]) => {
+                sightingsHtml += `
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+                        <span>${species}</span>
+                        <span style="font-weight: 600; color: #10b981;">${count}</span>
+                    </div>
+                `;
+            });
+            sightingsList.innerHTML = sightingsHtml;
+
+            // Stats Display
+            const statsDisplay = document.getElementById('statsDisplay');
+            const userSpeciesInArea = allSightings.filter(obs => userList.has(obs.comName));
+            const uniqueUserSpecies = new Set(userSpeciesInArea.map(obs => obs.comName));
+            const uniqueTotalSpecies = new Set(allSightings.map(obs => obs.comName));
+            const percentage = uniqueTotalSpecies.size > 0 
+                ? Math.round((uniqueUserSpecies.size / uniqueTotalSpecies.size) * 100)
+                : 0;
+
+            statsDisplay.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                    <div style="text-align: center; padding: 15px; background: #f0fdf4; border-radius: 8px;">
+                        <div style="font-size: 0.8em; color: #6b7280; margin-bottom: 5px;">YOUR SPECIES</div>
+                        <div style="font-size: 2em; font-weight: bold; color: #10b981;">${uniqueUserSpecies.size}</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 8px;">
+                        <div style="font-size: 0.8em; color: #6b7280; margin-bottom: 5px;">TOTAL SPECIES</div>
+                        <div style="font-size: 2em; font-weight: bold; color: #374151;">${uniqueTotalSpecies.size}</div>
+                    </div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: #fef3c7; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #92400e;">You've seen ${percentage}% of species in this area</span>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // PANEL TOGGLES
+        // ============================================
+        function togglePanel(panelId) {
+            const content = document.getElementById(panelId + 'Content');
+            const toggle = document.getElementById(panelId + 'Toggle');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.textContent = '+';
+            } else {
+                content.classList.add('expanded');
+                toggle.textContent = '−';
+            }
+        }
+
+        function toggleLegend() {
+            const content = document.getElementById('legendContent');
+            const toggle = document.getElementById('legendToggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '−';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '+';
+            }
+        }
+
+        function toggleQuickStart() {
+            const modal = document.getElementById('quickStartModal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+            }
+        }
+
+        // ============================================
+        // LAYER TOGGLES
+        // ============================================
+        function toggleHotspots() {
+            if (document.getElementById('showHotspots').checked) {
+                displayHotspots();
+            } else {
+                clearHotspots();
+            }
+        }
+
+        function toggleChecklists() {
+            // TODO: Implement checklist display
+            console.log('Checklist toggle - to be implemented');
+        }
+
+        // ============================================
+        // SEARCH SPECIFIC SPECIES
+        // ============================================
+        async function searchSpecies() {
+            const speciesName = document.getElementById('speciesSearch').value.trim();
+            const location = document.getElementById('speciesLocation').value.trim();
+
+            if (!speciesName) {
+                alert('Please enter a species name');
+                return;
+            }
+
+            console.log(`🔍 Searching for ${speciesName} near ${location || 'current area'}`);
+
+            try {
+                let lat, lng;
+                
+                if (location && speciesLocationAutocomplete && speciesLocationAutocomplete.getPlace()) {
+                    const place = speciesLocationAutocomplete.getPlace();
+                    if (place.geometry) {
+                        lat = place.geometry.location.lat();
+                        lng = place.geometry.location.lng();
+                    }
+                } else if (map) {
+                    const center = map.getCenter();
+                    lat = center.lat();
+                    lng = center.lng();
+                }
+
+                const radius = parseInt(document.getElementById('searchRadius').value);
+                const timeRange = parseInt(document.getElementById('timeRange').value);
+
+                const url = `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}&dist=${radius}&back=${timeRange}&sppLocale=en`;
+                const response = await fetch(url, {
+                    headers: { 'X-eBirdApiToken': userApiKey }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Search failed');
+                }
+
+                const observations = await response.json();
+                const matchingObs = observations.filter(obs => 
+                    obs.comName.toLowerCase().includes(speciesName.toLowerCase())
+                );
+
+                if (matchingObs.length === 0) {
+                    alert(`No recent sightings of "${speciesName}" found in this area.`);
+                    return;
+                }
+
+                // Clear current markers and display search results
+                clearMarkers();
+                allSightings = matchingObs;
+                targetSpecies = matchingObs.filter(obs => !userList.has(obs.comName));
+                
+                displayBirds();
+                
+                // Zoom to first result
+                if (matchingObs[0]) {
+                    map.setCenter({ lat: matchingObs[0].lat, lng: matchingObs[0].lng });
+                    map.setZoom(12);
+                }
+
+                console.log(`✅ Found ${matchingObs.length} sightings of ${speciesName}`);
+                alert(`Found ${matchingObs.length} recent sightings of "${speciesName}"`);
+
+            } catch (error) {
+                console.error('❌ Species search error:', error);
+                alert('Error searching for species');
+            }
+        }
+
+        // ============================================
+        // MARKER MANAGEMENT
+        // ============================================
+        function clearMarkers() {
+            markersArray.forEach(marker => marker.setMap(null));
+            markersArray = [];
+        }
+
+        function clearHotspots() {
+            hotspotsArray.forEach(marker => marker.setMap(null));
+            hotspotsArray = [];
+        }
+
+        // ============================================
+        // RESET ALL
+        // ============================================
+        function resetAll() {
+            // Clear route
+            if (directionsRenderer) {
+                directionsRenderer.setDirections({ routes: [] });
+            }
+            currentRoute = null;
+            tripWaypoints = [];
+            routeDuration = '';
+
+            // Clear markers
+            clearMarkers();
+            clearHotspots();
+
+            // Clear data
+            allSightings = [];
+            allHotspots = [];
+            targetSpecies = [];
+
+            // Reset UI
+            document.getElementById('originInput').value = '';
+            document.getElementById('destinationInput').value = '';
+            document.getElementById('routeDuration').classList.add('hidden');
+            document.getElementById('printBtn').classList.add('hidden');
+            document.getElementById('belowMap').style.display = 'none';
+            document.getElementById('waypointList').innerHTML = '';
+
+            // Reset map view
+            if (map) {
+                map.setCenter({ lat: 39.8283, lng: -98.5795 });
+                map.setZoom(4);
+            }
+
+            console.log('🔄 Reset complete');
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        console.log('✅ All JavaScript loaded successfully');
+        console.log('📋 Ready for eBird connection');
+
+    </script>
+</body>
+</html>
