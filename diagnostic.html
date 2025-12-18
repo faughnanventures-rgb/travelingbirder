@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Test - v5.0</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { border-left: 4px solid #10b981; background: #f0fdf4; }
+        .error { border-left: 4px solid #ef4444; background: #fef2f2; }
+        .info { border-left: 4px solid #3b82f6; background: #eff6ff; }
+        h1 { color: #1f2937; }
+        h2 { color: #374151; margin-top: 0; }
+        code { background: #e5e7eb; padding: 2px 6px; border-radius: 3px; }
+        .status { font-weight: bold; font-size: 1.2em; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Traveling Birder - Diagnostic Test</h1>
+    <p><strong>Version:</strong> 5.0 - DIAGNOSTIC BUILD</p>
+    <p><strong>Build Date:</strong> December 17, 2024</p>
+    
+    <div class="test-box info">
+        <h2>Purpose of This Test</h2>
+        <p>This page will tell you:</p>
+        <ul>
+            <li>If you're seeing the NEW version or OLD cached version</li>
+            <li>If Google Maps can load</li>
+            <li>What version is actually deployed</li>
+        </ul>
+    </div>
+
+    <div class="test-box" id="versionTest">
+        <h2>✅ Version Test</h2>
+        <div class="status">If you can read this, you have the NEW diagnostic file!</div>
+        <p>Version: <code>5.0-DIAGNOSTIC</code></p>
+        <p>This confirms you can load new files from the server.</p>
+    </div>
+
+    <div class="test-box" id="cacheTest">
+        <h2>🗄️ Cache Test</h2>
+        <p><strong>Current URL:</strong> <code id="currentUrl"></code></p>
+        <p><strong>Timestamp:</strong> <code id="timestamp"></code></p>
+        <p><strong>Random ID:</strong> <code id="randomId"></code></p>
+    </div>
+
+    <div class="test-box" id="mapTest">
+        <h2>🗺️ Google Maps Test</h2>
+        <p id="mapStatus">Testing Google Maps API...</p>
+        <div id="testMap" style="height: 300px; width: 100%; border: 2px solid #d1d5db; border-radius: 8px; margin-top: 10px;"></div>
+    </div>
+
+    <div class="test-box info">
+        <h2>📋 Next Steps</h2>
+        <p id="instructions">Loading instructions...</p>
+    </div>
+
+    <script>
+        console.log('🔍 DIAGNOSTIC v5.0 LOADED');
+        
+        // Update cache test info
+        document.getElementById('currentUrl').textContent = window.location.href;
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        document.getElementById('randomId').textContent = Math.random().toString(36).substring(7);
+        
+        // Google Maps test
+        window.initMap = function() {
+            console.log('✅ Google Maps callback fired');
+            const mapElement = document.getElementById('testMap');
+            
+            try {
+                const map = new google.maps.Map(mapElement, {
+                    center: { lat: 42.3601, lng: -71.0589 },
+                    zoom: 10
+                });
+                
+                new google.maps.Marker({
+                    position: { lat: 42.3601, lng: -71.0589 },
+                    map: map,
+                    title: 'Test Marker'
+                });
+                
+                document.getElementById('mapStatus').innerHTML = '<span style="color: #10b981; font-weight: bold;">✅ SUCCESS! Google Maps loaded correctly.</span>';
+                document.getElementById('mapTest').className = 'test-box success';
+                
+                document.getElementById('instructions').innerHTML = `
+                    <strong style="color: #10b981;">✅ Google Maps works!</strong>
+                    <p>Since the diagnostic file and Google Maps both work, the issue is:</p>
+                    <ol>
+                        <li><strong>You're viewing a CACHED version of index.html</strong></li>
+                        <li>The new index.html file is correct, but your browser isn't fetching it</li>
+                    </ol>
+                    <p><strong>Solution:</strong></p>
+                    <ol>
+                        <li>Close ALL tabs of the Traveling Birder site</li>
+                        <li>Clear ALL browsing data (Ctrl+Shift+Delete)</li>
+                        <li>Select "All time" and check "Cached images and files"</li>
+                        <li>Restart your browser completely</li>
+                        <li>Visit: <code>https://faughnanadventures-rgb.github.io/travelingbirder/?v=5</code></li>
+                    </ol>
+                    <p><strong>Or use Incognito mode</strong> (Ctrl+Shift+N) and visit the site fresh.</p>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Map creation error:', error);
+                document.getElementById('mapStatus').innerHTML = '<span style="color: #ef4444; font-weight: bold;">❌ ERROR: ' + error.message + '</span>';
+                document.getElementById('mapTest').className = 'test-box error';
+                
+                document.getElementById('instructions').innerHTML = `
+                    <strong style="color: #ef4444;">❌ Google Maps failed to load</strong>
+                    <p>Error: <code>${error.message}</code></p>
+                    <p>Possible causes:</p>
+                    <ul>
+                        <li>Google Maps API key issue</li>
+                        <li>API key restrictions</li>
+                        <li>Network/firewall blocking Google</li>
+                    </ul>
+                `;
+            }
+        };
+    </script>
+    
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBvpU9tANBmnbKqMM2UWvELa9nRcrhneY0&callback=initMap"></script>
+</body>
+</html>
