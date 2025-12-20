@@ -1,0 +1,202 @@
+<!-- ===============================================
+     CSV UPLOAD INSTRUCTIONS MODAL
+     Add this to your index.html
+     =============================================== -->
+
+<!-- Trigger button in CSV import section -->
+<div style="margin-bottom: 15px; padding: 15px; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <h4 style="margin: 0; color: #92400e; font-size: 1em;">
+            ⚠️ IMPORTANT: Use "Last Seen" for Accurate Filtering
+        </h4>
+        <button onclick="showCSVInstructions()" style="
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+        ">
+            📖 Show Instructions
+        </button>
+    </div>
+    <div style="font-size: 0.9em; color: #92400e; line-height: 1.5;">
+        <p style="margin: 0 0 8px 0;">
+            For year/month list filtering to work correctly, you must download your CSV 
+            using the <strong>"Last seen"</strong> tab on eBird.
+        </p>
+        <p style="margin: 0; font-size: 0.85em;">
+            Click "Show Instructions" for step-by-step guide.
+        </p>
+    </div>
+</div>
+
+<!-- Instructions Modal -->
+<div id="csvInstructionsModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; color: var(--text-primary);">
+                📋 How to Download Your eBird CSV
+            </h2>
+            <button class="close-modal" onclick="closeCSVInstructions()" style="
+                background: none;
+                border: none;
+                font-size: 2em;
+                cursor: pointer;
+                color: var(--text-secondary);
+                line-height: 1;
+            ">&times;</button>
+        </div>
+        
+        <!-- Critical Step Highlight -->
+        <div style="background: #fef3c7; border-left: 4px solid #fbbf24; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+            <div style="font-weight: 700; color: #92400e; margin-bottom: 8px; font-size: 1.1em;">
+                ⚠️ CRITICAL STEP: Use "Last Seen" Tab
+            </div>
+            <div style="color: #92400e; font-size: 0.95em; line-height: 1.5;">
+                The "Last seen" tab shows your most recent sighting of each species. 
+                This is essential for accurate year/month list filtering!
+            </div>
+        </div>
+        
+        <!-- Step-by-step Instructions -->
+        <div style="margin-bottom: 20px;">
+            <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #10b981;">
+                <div style="font-weight: 700; color: #065f46; margin-bottom: 5px;">
+                    ✅ Step 1: Go to Your Life List
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9em;">
+                    Visit: <a href="https://ebird.org/lifelist" target="_blank" style="color: #10b981; font-weight: 600;">ebird.org/lifelist</a>
+                </div>
+            </div>
+            
+            <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #10b981;">
+                <div style="font-weight: 700; color: #065f46; margin-bottom: 5px;">
+                    ✅ Step 2: Click "Last seen" Tab
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 8px;">
+                    At the top of your life list, you'll see two tabs:
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                    <div style="padding: 8px 12px; background: #e5e7eb; border-radius: 4px; font-size: 0.85em; color: #6b7280;">
+                        First seen
+                    </div>
+                    <div style="padding: 8px 12px; background: #10b981; color: white; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                        Last seen ← Click this one!
+                    </div>
+                </div>
+                <div style="font-size: 0.85em; color: var(--text-secondary); font-style: italic;">
+                    ⚠️ Make sure you select "Last seen" NOT "First seen"
+                </div>
+            </div>
+            
+            <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #10b981;">
+                <div style="font-weight: 700; color: #065f46; margin-bottom: 5px;">
+                    ✅ Step 3: Download CSV
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9em;">
+                    Click the <strong>"Download (csv)"</strong> button in the top right corner
+                </div>
+            </div>
+            
+            <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">
+                <div style="font-weight: 700; color: #065f46; margin-bottom: 5px;">
+                    ✅ Step 4: Upload to Traveling Birder
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9em;">
+                    Come back here and upload the CSV file using the button below
+                </div>
+            </div>
+        </div>
+        
+        <!-- Why This Matters -->
+        <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <div style="font-weight: 700; color: #1e40af; margin-bottom: 8px;">
+                📊 Why "Last Seen" Matters:
+            </div>
+            <div style="font-size: 0.9em; color: #1e3a8a; line-height: 1.6;">
+                <div style="margin-bottom: 6px;">
+                    <strong>"First seen"</strong> shows when you first saw each bird (e.g., 2018)
+                    <br>→ Year list filter won't work correctly
+                </div>
+                <div>
+                    <strong>"Last seen"</strong> shows your most recent sighting (e.g., 2025)
+                    <br>→ Year list filter works perfectly!
+                </div>
+            </div>
+        </div>
+        
+        <!-- Example -->
+        <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">
+                💡 Example:
+            </div>
+            <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.6;">
+                <div style="margin-bottom: 10px;">
+                    <strong>Your Life List (Last Seen):</strong><br>
+                    • Common Grackle: November 20, 2025<br>
+                    • Scarlet Tanager: July 22, 2024
+                </div>
+                <div>
+                    <strong>Filter: "Year List Targets Only" (2025)</strong><br>
+                    ✅ Shows: Scarlet Tanager (not seen in 2025)<br>
+                    ❌ Hides: Common Grackle (seen in 2025)
+                </div>
+            </div>
+        </div>
+        
+        <!-- Close Button -->
+        <div style="text-align: center;">
+            <button onclick="closeCSVInstructions()" style="
+                background: #10b981;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 1em;
+                font-weight: 600;
+            ">
+                Got it! I'll use "Last Seen"
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript Functions -->
+<script>
+function showCSVInstructions() {
+    document.getElementById('csvInstructionsModal').style.display = 'flex';
+}
+
+function closeCSVInstructions() {
+    document.getElementById('csvInstructionsModal').style.display = 'none';
+}
+</script>
+
+<!-- Modal Styles (if not already in your CSS) -->
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: var(--bg-secondary);
+    padding: 30px;
+    border-radius: 12px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+</style>
