@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+  
+  <!-- Bird silhouette -->
+  <g transform="translate(80, 120)">
+    <!-- Bird body -->
+    <ellipse cx="176" cy="150" rx="120" ry="80" fill="white"/>
+    
+    <!-- Bird head -->
+    <circle cx="280" cy="110" r="55" fill="white"/>
+    
+    <!-- Beak -->
+    <polygon points="335,100 380,115 335,130" fill="#fbbf24"/>
+    
+    <!-- Eye -->
+    <circle cx="300" cy="100" r="12" fill="#1f2937"/>
+    <circle cx="303" cy="97" r="4" fill="white"/>
+    
+    <!-- Wing -->
+    <ellipse cx="150" cy="140" rx="70" ry="50" fill="#d1fae5"/>
+    <path d="M100 120 Q130 160 180 140" stroke="#10b981" stroke-width="3" fill="none"/>
+    <path d="M110 135 Q140 170 190 150" stroke="#10b981" stroke-width="3" fill="none"/>
+    
+    <!-- Tail -->
+    <polygon points="56,130 20,90 30,150 20,200 56,170" fill="white"/>
+    
+    <!-- Feet -->
+    <g fill="#fbbf24" stroke="#f59e0b" stroke-width="2">
+      <path d="M200 230 L200 270 M190 260 L200 270 L210 260"/>
+      <path d="M240 230 L240 270 M230 260 L240 270 L250 260"/>
+    </g>
+  </g>
+  
+  <!-- Map pin indicator -->
+  <g transform="translate(350, 320)">
+    <path d="M60 0 C93 0 120 27 120 60 C120 105 60 150 60 150 C60 150 0 105 0 60 C0 27 27 0 60 0" fill="#ef4444"/>
+    <circle cx="60" cy="55" r="25" fill="white"/>
+  </g>
+</svg>
