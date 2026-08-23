@@ -1,0 +1,15 @@
+{
+  "name": "traveling-birder",
+  "version": "8.1.0",
+  "description": "Traveling Birder - Bird finding app powered by eBird",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/node": "^3.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
